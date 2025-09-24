@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>「決鬥 25」紙牌對戰遊戲 by Wiwi.Blog</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .game-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            border-radius: 8px;
+            background-color: white;
+        }
+        
+        .game-title {
+            text-align: left;
+            margin: 0 0 3px 0;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        
+        .game-rules {
+            text-align: left;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .hp-display {
+            display: flex;
+            justify-content: left;
+            align-items: left;
+            gap: 20px;
+            margin-top: 5px;
+            margin-bottom: 3px;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        
+        .player-hp {
+            color: #2e7d32;
+        }
+        
+        .computer-hp {
+            color: #c62828;
+        }
+        
+        .hand-title {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .card-container {
+            display: flex;
+            gap: 10px;
+            justify-content: left;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .card {
+            border: 1px solid #777;
+            border-radius: 3px;
+            padding: 0px 7px;
+            cursor: pointer;
+            font-size: 1rem;
+            min-width: 35px;
+            text-align: center;
+            transition: all 0.2s;
+            background-color: white;
+        }
+        
+        .card:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+        
+        .battle-log {
+            min-height: 7rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            overflow-y: auto;
+            max-height: 7rem;
+            background-color: #fafafa;
+        }
+        
+        .game-over {
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: #d32f2f;
+            margin: 10px 0;
+        }
+        
+        .restart-button {
+            display: block;
+            margin: 10px auto 0;
+            padding: 8px 16px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .restart-button:hover {
+            background-color: #1565c0;
+        }
+        
+        hr {
+            margin: 0;
+            height: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h2 class="game-title">「決鬥 25」紙牌對戰遊戲 v2.0</h2>
+        
+        <div class="game-rules">by <a href="https://wiwi.blog">Wiwi Kuan</a> | <a href="https://wiwi.blog/blog/simple-card-battle-game">怎麼玩？</a><br />♠️♣️ 攻擊 |  ♦️ 反擊 |  ♥️ 回血</div>
+
+        <hr />
+        
+        <div class="hp-display">
+            <span class="player-hp">玩家：<span id="playerHp">25</span> HP</span>
+            <span class="computer-hp">電腦：<span id="computerHp">25</span> HP</span>
+        </div>
+        
+        <div>
+            <div class="hand-title">你的手牌（點擊出牌）:</div>
+            <div class="card-container" id="playerHand"></div>
+        </div>
+        
+        <div class="battle-log" id="battleResult">點擊手牌出牌開始對戰！</div>
+        
+        <div class="game-over" id="gameOverMessage"></div>
+        
+        <button class="restart-button" id="restartButton" style="display: none;" onclick="initGame()">重新開始</button>
+    </div>
+
+    <script>
+        // 遊戲狀態
+        let gameState = {
+            playerHp: 25,
+            computerHp: 25,
+            playerHand: [],
+            computerHand: [],
+            deck: [],
+            gameEnded: false,
+            battleResult: '點擊手牌出牌開始對戰！',
+            gameOverMessage: ''
+        };
+
+        // 建立一副完整的撲克牌
+        function createDeck() {
+            const suits = ['♠️', '♥️', '♦️', '♣️'];
+            const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            const newDeck = [];
+            
+            for (let suit of suits) {
+                for (let value of values) {
+                    newDeck.push({ suit, value });
+                }
+            }
+            
+            return newDeck;
+        }
+
+        // 洗牌
+        function shuffleDeck(deck) {
+            const shuffled = [...deck];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // 取得牌的點數值
+        function getCardValue(card) {
+            if (card.value === 'A') return 1;
+            if (card.value === 'J') return 11;
+            if (card.value === 'Q') return 12;
+            if (card.value === 'K') return 13;
+            return parseInt(card.value);
+        }
+
+        // 判斷牌的類型
+        function getCardType(card) {
+            if (card.suit === '♠️' || card.suit === '♣️') return 'attack';
+            if (card.suit === '♦️') return 'counter';
+            if (card.suit === '♥️') return 'heal';
+        }
+
+        // 格式化顯示牌
+        function formatCard(card) {
+            return `${card.value}${card.suit}`;
+        }
+
+        // 處理攻擊傷害
+        function processAttack(attackCard, targetHp) {
+            const damage = getCardValue(attackCard);
+            return Math.max(0, targetHp - damage);
+        }
+
+        // 處理回血
+        function processHeal(healCard, currentHp) {
+            const healAmount = getCardValue(healCard);
+            return Math.min(25, currentHp + healAmount);
+        }
+
+        // 處理一回合的戰鬥
+        function processBattle(playerCard, computerCard) {
+            let battleLog = [];
+            battleLog.push(`玩家出牌：${formatCard(playerCard)}`);
+            battleLog.push(`電腦出牌：${formatCard(computerCard)}`);
+            
+            let newPlayerHp = gameState.playerHp;
+            let newComputerHp = gameState.computerHp;
+            
+            const playerCardType = getCardType(playerCard);
+            const computerCardType = getCardType(computerCard);
+            
+            // 第一階段：處理攻擊和反擊
+            if (playerCardType === 'attack' && computerCardType === 'attack') {
+                // 雙方互相攻擊
+                newComputerHp = processAttack(playerCard, newComputerHp);
+                newPlayerHp = processAttack(computerCard, newPlayerHp);
+                battleLog.push(`雙方互相攻擊！`);
+                battleLog.push(`玩家受傷 ${getCardValue(computerCard)}，電腦受傷 ${getCardValue(playerCard)}`);
+            } else {
+                // 玩家攻擊
+                if (playerCardType === 'attack') {
+                    if (computerCardType === 'counter') {
+                        newPlayerHp = processAttack(computerCard, newPlayerHp);
+                        battleLog.push(`玩家攻擊被反擊！受到 ${getCardValue(computerCard)} 反擊傷害`);
+                    } else {
+                        newComputerHp = processAttack(playerCard, newComputerHp);
+                        battleLog.push(`玩家攻擊！電腦受到 ${getCardValue(playerCard)} 傷害`);
+                    }
+                }
+                
+                // 電腦攻擊
+                if (computerCardType === 'attack') {
+                    if (playerCardType === 'counter') {
+                        newComputerHp = processAttack(playerCard, newComputerHp);
+                        battleLog.push(`電腦攻擊被反擊！受到 ${getCardValue(playerCard)} 反擊傷害`);
+                    } else {
+                        newPlayerHp = processAttack(computerCard, newPlayerHp);
+                        battleLog.push(`電腦攻擊！玩家受到 ${getCardValue(computerCard)} 傷害`);
+                    }
+                }
+            }
+            
+            // 檢查致命傷害
+            if (newPlayerHp <= 0 || newComputerHp <= 0) {
+                gameState.playerHp = newPlayerHp;
+                gameState.computerHp = newComputerHp;
+                battleLog.push('致命傷害！遊戲結束！');
+                gameState.battleResult = battleLog.join('<br>');
+                checkGameEnd(newPlayerHp, newComputerHp);
+                updateDisplay();
+                return;
+            }
+            
+            // 處理無效反擊
+            if (playerCardType === 'counter' && computerCardType !== 'attack') {
+                battleLog.push(`玩家反擊無效（對方沒有攻擊）`);
+            }
+            if (computerCardType === 'counter' && playerCardType !== 'attack') {
+                battleLog.push(`電腦反擊無效（對方沒有攻擊）`);
+            }
+            
+            // 更新生命值
+            gameState.playerHp = newPlayerHp;
+            gameState.computerHp = newComputerHp;
+            
+            // 第二階段：處理回血
+            if (playerCardType === 'heal') {
+                const originalPlayerHp = newPlayerHp;
+                newPlayerHp = processHeal(playerCard, newPlayerHp);
+                gameState.playerHp = newPlayerHp;
+                battleLog.push(`玩家回血 ${newPlayerHp - originalPlayerHp} 點`);
+            }
+            
+            if (computerCardType === 'heal') {
+                const originalComputerHp = newComputerHp;
+                newComputerHp = processHeal(computerCard, newComputerHp);
+                gameState.computerHp = newComputerHp;
+                battleLog.push(`電腦回血 ${newComputerHp - originalComputerHp} 點`);
+            }
+            gameState.battleResult = battleLog.join('<br>');
+        }
+
+        // 檢查遊戲是否結束
+        function checkGameEnd(currentPlayerHp = gameState.playerHp, currentComputerHp = gameState.computerHp) {
+            let gameOverMsg = '';
+            
+            if (currentPlayerHp <= 0 && currentComputerHp <= 0) {
+                gameOverMsg = '平手！';
+            } else if (currentPlayerHp <= 0) {
+                gameOverMsg = '電腦勝利！';
+            } else if (currentComputerHp <= 0) {
+                gameOverMsg = '玩家勝利！';
+            }
+            
+            if (gameOverMsg) {
+                gameState.gameEnded = true;
+                gameState.gameOverMessage = gameOverMsg;
+                return true;
+            }
+            
+            return false;
+        }
+
+        // 牌堆用完的 Game Over
+        function noMoreCardsGameOver() {
+            gameState.gameEnded = true;
+            gameState.gameOverMessage = '牌堆用完，平手！';
+            return true;
+        }
+
+        // 補牌
+        function drawCards(currentPlayerHand, currentComputerHand, currentDeck) {
+            const newPlayerHand = [...currentPlayerHand];
+            const newComputerHand = [...currentComputerHand];
+            const newDeck = [...currentDeck];
+            
+            // 玩家補牌
+            while (newPlayerHand.length < 5 && newDeck.length > 0) {
+                newPlayerHand.push(newDeck.pop());
+            }
+            
+            // 電腦補牌
+            while (newComputerHand.length < 5 && newDeck.length > 0) {
+                newComputerHand.push(newDeck.pop());
+            }
+            
+            return { newPlayerHand, newComputerHand, newDeck };
+        }
+
+        // MCTS AI 選牌
+        function mctsChooseCard(gameStateForAI) {
+            const { computerHand, playerHp, computerHp } = gameStateForAI;
+            let bestCard = 0;
+            let bestWinRate = -1;
+            let debugInfo = [];
+            
+            // 對每張手牌模擬 5000 次對局
+            for (let i = 0; i < computerHand.length; i++) {
+                let wins = 0;
+                for (let sim = 0; sim < 5000; sim++) {
+                    if (simulateGame(gameStateForAI, i)) wins++;
+                }
+                const winRate = wins / 5000;
+                const card = computerHand[i];
+                debugInfo.push(`${formatCard(card)}: ${(winRate * 100).toFixed(1)}% 勝率`);
+                
+                if (winRate > bestWinRate) {
+                    bestWinRate = winRate;
+                    bestCard = i;
+                }
+            }
+            
+            // 輸出 debug 資訊
+            console.log(`🤖 MCTS 思考中... (血量 ${computerHp}/${playerHp})`);
+            console.log(debugInfo.join(' | '));
+            console.log(`→ 選擇 ${formatCard(computerHand[bestCard])} (${(bestWinRate * 100).toFixed(1)}% 勝率)`);
+            
+            return bestCard;
+        }
+
+        // 模擬完整對局（電腦視角，回傳電腦是否獲勝）
+        function simulateGame(gameStateForSim, computerCardIndex) {
+            let simPlayerHp = gameStateForSim.playerHp;
+            let simComputerHp = gameStateForSim.computerHp;
+            let simDeck = [...gameStateForSim.deck];
+            let simPlayerHand = [...gameStateForSim.playerHand];
+            let simComputerHand = [...gameStateForSim.computerHand];
+            
+            // 第一回合：電腦出指定牌，玩家隨機出牌
+            const computerCard = simComputerHand.splice(computerCardIndex, 1)[0];
+            const playerCard = simPlayerHand.splice(Math.floor(Math.random() * simPlayerHand.length), 1)[0];
+            
+            const result = simulateBattle(playerCard, computerCard, simPlayerHp, simComputerHp);
+            simPlayerHp = result.playerHp;
+            simComputerHp = result.computerHp;
+            
+            if (simPlayerHp <= 0) return true;
+            if (simComputerHp <= 0) return false;
+            
+            // 補牌並繼續隨機對局
+            while (simPlayerHand.length < 5 && simDeck.length > 0) simPlayerHand.push(simDeck.pop());
+            while (simComputerHand.length < 5 && simDeck.length > 0) simComputerHand.push(simDeck.pop());
+            
+            // 後續回合都隨機出牌
+            for (let turn = 0; turn < 20 && simPlayerHp > 0 && simComputerHp > 0 && simDeck.length > 0; turn++) {
+                if (simPlayerHand.length === 0 || simComputerHand.length === 0) break;
+                
+                const pCard = simPlayerHand.splice(Math.floor(Math.random() * simPlayerHand.length), 1)[0];
+                const cCard = simComputerHand.splice(Math.floor(Math.random() * simComputerHand.length), 1)[0];
+                
+                const battleResult = simulateBattle(pCard, cCard, simPlayerHp, simComputerHp);
+                simPlayerHp = battleResult.playerHp;
+                simComputerHp = battleResult.computerHp;
+                
+                if (simPlayerHp <= 0) return true;
+                if (simComputerHp <= 0) return false;
+                
+                while (simPlayerHand.length < 5 && simDeck.length > 0) simPlayerHand.push(simDeck.pop());
+                while (simComputerHand.length < 5 && simDeck.length > 0) simComputerHand.push(simDeck.pop());
+            }
+            
+            return simComputerHp > simPlayerHp;
+        }
+
+        // 快速戰鬥模擬
+        function simulateBattle(playerCard, computerCard, playerHp, computerHp) {
+            let newPlayerHp = playerHp;
+            let newComputerHp = computerHp;
+            
+            const pType = getCardType(playerCard);
+            const cType = getCardType(computerCard);
+            
+            // 攻擊和反擊邏輯
+            if (pType === 'attack' && cType === 'attack') {
+                newPlayerHp = Math.max(0, newPlayerHp - getCardValue(computerCard));
+                newComputerHp = Math.max(0, newComputerHp - getCardValue(playerCard));
+            } else {
+                if (pType === 'attack') {
+                    if (cType === 'counter') {
+                        newPlayerHp = Math.max(0, newPlayerHp - getCardValue(computerCard));
+                    } else {
+                        newComputerHp = Math.max(0, newComputerHp - getCardValue(playerCard));
+                    }
+                }
+                if (cType === 'attack') {
+                    if (pType === 'counter') {
+                        newComputerHp = Math.max(0, newComputerHp - getCardValue(playerCard));
+                    } else {
+                        newPlayerHp = Math.max(0, newPlayerHp - getCardValue(computerCard));
+                    }
+                }
+            }
+            
+            // 如果有致命傷害就不回血了
+            if (newPlayerHp <= 0 || newComputerHp <= 0) {
+                return { playerHp: newPlayerHp, computerHp: newComputerHp };
+            }
+            
+            // 回血
+            if (pType === 'heal') newPlayerHp = Math.min(25, newPlayerHp + getCardValue(playerCard));
+            if (cType === 'heal') newComputerHp = Math.min(25, newComputerHp + getCardValue(computerCard));
+            
+            return { playerHp: newPlayerHp, computerHp: newComputerHp };
+        }
+
+        // 玩家出牌
+        function playCard(cardIndex) {
+            if (gameState.gameEnded) return;
+            
+            // 玩家出牌
+            const newPlayerHand = [...gameState.playerHand];
+            const playerCard = newPlayerHand.splice(cardIndex, 1)[0];
+
+            // 電腦用 MCTS 選牌
+            const newComputerHand = [...gameState.computerHand];
+            const gameStateForAI = {
+                playerHp: gameState.playerHp, 
+                computerHp: gameState.computerHp, 
+                deck: gameState.deck,
+                playerHand: newPlayerHand,
+                computerHand: newComputerHand
+            };
+            const computerCardIndex = mctsChooseCard(gameStateForAI);
+            const computerCard = newComputerHand.splice(computerCardIndex, 1)[0];
+            
+            // 處理戰鬥
+            processBattle(playerCard, computerCard);
+            
+            // 補牌
+            const { newPlayerHand: finalPlayerHand, newComputerHand: finalComputerHand, newDeck } = drawCards(newPlayerHand, newComputerHand, gameState.deck);
+            
+            gameState.playerHand = finalPlayerHand;
+            gameState.computerHand = finalComputerHand;
+            gameState.deck = newDeck;
+            
+            if (newDeck.length < 2 && !gameState.gameEnded) { // 牌堆用完，而且沒有人死掉嗎？
+                noMoreCardsGameOver(); 
+            }
+
+            updateDisplay();
+        }
+
+        // 更新顯示
+        function updateDisplay() {
+            document.getElementById('playerHp').textContent = gameState.playerHp;
+            document.getElementById('computerHp').textContent = gameState.computerHp;
+            document.getElementById('battleResult').innerHTML = gameState.battleResult;
+            document.getElementById('gameOverMessage').textContent = gameState.gameOverMessage;
+            
+            // 更新手牌顯示
+            const playerHandDiv = document.getElementById('playerHand');
+            playerHandDiv.innerHTML = '';
+            gameState.playerHand.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.textContent = formatCard(card);
+                cardDiv.onclick = () => playCard(index);
+                playerHandDiv.appendChild(cardDiv);
+            });
+
+            // 顯示/隱藏重新開始按鈕
+            const restartButton = document.getElementById('restartButton');
+            if (gameState.gameEnded) {
+                restartButton.style.display = 'block';
+            } else {
+                restartButton.style.display = 'none';
+            }
+        }
+
+        // 初始化遊戲
+        function initGame() {
+            // 重置遊戲狀態
+            gameState.playerHp = 25;
+            gameState.computerHp = 25;
+            gameState.gameEnded = false;
+            gameState.gameOverMessage = '';
+            gameState.battleResult = '點擊手牌出牌開始對戰！';
+            
+            // 建立並洗牌
+            const newDeck = shuffleDeck(createDeck());
+            
+            // 發初始手牌
+            const initialPlayerHand = [];
+            const initialComputerHand = [];
+            
+            for (let i = 0; i < 5; i++) {
+                initialPlayerHand.push(newDeck.pop());
+                initialComputerHand.push(newDeck.pop());
+            }
+            
+            gameState.playerHand = initialPlayerHand;
+            gameState.computerHand = initialComputerHand;
+            gameState.deck = newDeck;
+            
+            updateDisplay();
+        }
+
+        // 頁面加載時初始化遊戲
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
