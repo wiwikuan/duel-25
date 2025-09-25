@@ -2,6 +2,10 @@
 
 一個超級簡單的雙人紙牌對戰遊戲。
 
+## 影片解說
+
+https://www.youtube.com/watch?v=ySnArXULVqk
+
 ## 規則
 
 - 👥 **人數**：兩人。
