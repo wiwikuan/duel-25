@@ -4,7 +4,7 @@
 
 ## 影片解說
 
-https://www.youtube.com/watch?v=ySnArXULVqk
+[https://www.youtube.com/watch?v=ySnArXULVqk](https://www.youtube.com/watch?v=3EoWWA1TRi4)
 
 ## 規則
 
