@@ -80,7 +80,7 @@
         }
         
         .card:hover {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             transform: translateY(-2px);
         }
         
@@ -128,7 +128,7 @@
 </head>
 <body>
     <div class="game-container">
-        <h2 class="game-title">「決鬥 25」紙牌對戰遊戲 v2.0</h2>
+        <h2 class="game-title">「決鬥 25」紙牌對戰遊戲 v2.1</h2>
         
         <div class="game-rules">by <a href="https://wiwi.blog">Wiwi Kuan</a> | <a href="https://wiwi.blog/blog/simple-card-battle-game">怎麼玩？</a><br />♠️♣️ 攻擊 |  ♦️ 反擊 |  ♥️ 回血</div>
 
@@ -143,9 +143,23 @@
             <div class="hand-title">你的手牌（點擊出牌）:</div>
             <div class="card-container" id="playerHand"></div>
         </div>
-        
-        <div class="battle-log" id="battleResult">點擊手牌出牌開始對戰！</div>
-        
+
+        <div>
+            <div style="margin-bottom: 5px;">
+                <span style="font-weight: bold; font-size: 0.9rem;" id="roundDisplay">準備開始</span>
+            </div>
+            <div class="battle-log" id="battleResult">點擊手牌出牌開始對戰！</div>
+            <div style="text-align: center; margin-top: 8px;">
+                <button id="historyButton"
+                    style="padding: 4px 12px; font-size: 0.8rem; background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer;"
+                    onclick="toggleHistory()">顯示歷史</button>
+            </div>
+            <div id="historyPanel"
+                style="display: none; margin-top: 8px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+                <div style="padding: 8px; font-size: 0.8rem;" id="historyContent">尚無歷史記錄</div>
+            </div>
+        </div>
+
         <div class="game-over" id="gameOverMessage"></div>
         
         <button class="restart-button" id="restartButton" style="display: none;" onclick="initGame()">重新開始</button>
@@ -161,7 +175,9 @@
             deck: [],
             gameEnded: false,
             battleResult: '點擊手牌出牌開始對戰！',
-            gameOverMessage: ''
+            gameOverMessage: '',
+            currentRound: 0,
+            battleHistory: []
         };
 
         // 建立一副完整的撲克牌
@@ -224,7 +240,9 @@
 
         // 處理一回合的戰鬥
         function processBattle(playerCard, computerCard) {
+            gameState.currentRound++;
             let battleLog = [];
+            // battleLog.push(`第 ${gameState.currentRound} 回合`);
             battleLog.push(`玩家出牌：${formatCard(playerCard)}`);
             battleLog.push(`電腦出牌：${formatCard(computerCard)}`);
             
@@ -270,6 +288,20 @@
                 gameState.playerHp = newPlayerHp;
                 gameState.computerHp = newComputerHp;
                 battleLog.push('致命傷害！遊戲結束！');
+
+                // 儲存戰鬥記錄到歷史（致命傷害情況）
+                const roundRecord = {
+                    round: gameState.currentRound,
+                    playerCard: formatCard(playerCard),
+                    computerCard: formatCard(computerCard),
+                    log: battleLog.slice(1), // 不包含回合標題
+                    playerHpBefore: gameState.playerHp,
+                    computerHpBefore: gameState.computerHp,
+                    playerHpAfter: newPlayerHp,
+                    computerHpAfter: newComputerHp
+                };
+                gameState.battleHistory.push(roundRecord);
+
                 gameState.battleResult = battleLog.join('<br>');
                 checkGameEnd(newPlayerHp, newComputerHp);
                 updateDisplay();
@@ -302,6 +334,20 @@
                 gameState.computerHp = newComputerHp;
                 battleLog.push(`電腦回血 ${newComputerHp - originalComputerHp} 點`);
             }
+
+            // 儲存戰鬥記錄到歷史
+            const roundRecord = {
+                round: gameState.currentRound,
+                playerCard: formatCard(playerCard),
+                computerCard: formatCard(computerCard),
+                log: battleLog.slice(1), // 不包含回合標題
+                playerHpBefore: gameState.playerHp,
+                computerHpBefore: gameState.computerHp,
+                playerHpAfter: newPlayerHp,
+                computerHpAfter: newComputerHp
+            };
+            gameState.battleHistory.push(roundRecord);
+
             gameState.battleResult = battleLog.join('<br>');
         }
 
@@ -505,13 +551,88 @@
             updateDisplay();
         }
 
+        // 切換歷史面板顯示
+        function toggleHistory() {
+            const historyPanel = document.getElementById('historyPanel');
+            const historyButton = document.getElementById('historyButton');
+
+            if (historyPanel.style.display === 'none') {
+                updateHistoryDisplay();
+                historyPanel.style.display = 'block';
+                historyButton.textContent = '隱藏歷史';
+            } else {
+                historyPanel.style.display = 'none';
+                historyButton.textContent = '顯示歷史';
+            }
+        }
+
+        // 更新歷史記錄顯示
+        function updateHistoryDisplay() {
+            const historyContent = document.getElementById('historyContent');
+
+            if (gameState.battleHistory.length === 0) {
+                historyContent.innerHTML = '尚無歷史記錄';
+                return;
+            }
+
+            let historyHtml = '';
+            gameState.battleHistory.forEach((record, index) => {
+                const isLatest = index === gameState.battleHistory.length - 1;
+                const bgColor = isLatest ? '#e3f2fd' : '#f9f9f9';
+
+                historyHtml += `
+                    <div style="padding: 6px; margin-bottom: 4px; background: ${bgColor}; border-radius: 3px; cursor: pointer;" onclick="showRoundDetail(${index})">
+                        <strong>第 ${record.round} 回合</strong> - ${record.playerCard} vs ${record.computerCard}
+                        <div style="font-size: 0.75rem; color: #666;">
+                            玩家: ${record.playerHpBefore}→${record.playerHpAfter} HP | 電腦: ${record.computerHpBefore}→${record.computerHpAfter} HP
+                        </div>
+                    </div>
+                `;
+            });
+
+            historyContent.innerHTML = historyHtml;
+
+            // 自動滾動到最下面顯示最新戰鬥
+            const historyPanel = document.getElementById('historyPanel');
+            setTimeout(() => {
+                historyPanel.scrollTop = historyPanel.scrollHeight;
+            }, 0);
+        }
+
+        // 顯示特定回合的詳細記錄
+        function showRoundDetail(recordIndex) {
+            const record = gameState.battleHistory[recordIndex];
+            const battleResult = document.getElementById('battleResult');
+
+            let detailLog = [`第 ${record.round} 回合`];
+            detailLog = detailLog.concat(record.log);
+
+            battleResult.innerHTML = detailLog.join('<br>');
+
+            // 更新回合顯示
+            document.getElementById('roundDisplay').textContent = `查看第 ${record.round} 回合`;
+        }
+
         // 更新顯示
         function updateDisplay() {
             document.getElementById('playerHp').textContent = gameState.playerHp;
             document.getElementById('computerHp').textContent = gameState.computerHp;
             document.getElementById('battleResult').innerHTML = gameState.battleResult;
             document.getElementById('gameOverMessage').textContent = gameState.gameOverMessage;
-            
+
+            // 更新回合顯示
+            if (gameState.currentRound === 0) {
+                document.getElementById('roundDisplay').textContent = '準備開始';
+            } else {
+                document.getElementById('roundDisplay').textContent = `第 ${gameState.currentRound} 回合`;
+            }
+
+            // 如果歷史面板是開啟的，自動更新歷史記錄
+            const historyPanel = document.getElementById('historyPanel');
+            if (historyPanel.style.display === 'block') {
+                updateHistoryDisplay();
+            }
+
             // 更新手牌顯示
             const playerHandDiv = document.getElementById('playerHand');
             playerHandDiv.innerHTML = '';
@@ -540,7 +661,13 @@
             gameState.gameEnded = false;
             gameState.gameOverMessage = '';
             gameState.battleResult = '點擊手牌出牌開始對戰！';
-            
+            gameState.currentRound = 0;
+            gameState.battleHistory = [];
+
+            // 隱藏歷史面板
+            document.getElementById('historyPanel').style.display = 'block';
+            document.getElementById('historyButton').textContent = '隱藏歷史';
+
             // 建立並洗牌
             const newDeck = shuffleDeck(createDeck());
             
