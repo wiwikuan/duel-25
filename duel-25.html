@@ -245,7 +245,11 @@
             // battleLog.push(`第 ${gameState.currentRound} 回合`);
             battleLog.push(`玩家出牌：${formatCard(playerCard)}`);
             battleLog.push(`電腦出牌：${formatCard(computerCard)}`);
-            
+
+            // 記錄戰鬥前的血量
+            const playerHpBefore = gameState.playerHp;
+            const computerHpBefore = gameState.computerHp;
+
             let newPlayerHp = gameState.playerHp;
             let newComputerHp = gameState.computerHp;
             
@@ -295,8 +299,8 @@
                     playerCard: formatCard(playerCard),
                     computerCard: formatCard(computerCard),
                     log: battleLog.slice(1), // 不包含回合標題
-                    playerHpBefore: gameState.playerHp,
-                    computerHpBefore: gameState.computerHp,
+                    playerHpBefore: playerHpBefore,
+                    computerHpBefore: computerHpBefore,
                     playerHpAfter: newPlayerHp,
                     computerHpAfter: newComputerHp
                 };
@@ -341,8 +345,8 @@
                 playerCard: formatCard(playerCard),
                 computerCard: formatCard(computerCard),
                 log: battleLog.slice(1), // 不包含回合標題
-                playerHpBefore: gameState.playerHp,
-                computerHpBefore: gameState.computerHp,
+                playerHpBefore: playerHpBefore,
+                computerHpBefore: computerHpBefore,
                 playerHpAfter: newPlayerHp,
                 computerHpAfter: newComputerHp
             };
